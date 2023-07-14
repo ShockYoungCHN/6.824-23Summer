@@ -8,7 +8,9 @@ package main
 // go build -buildmode=plugin crash.go
 //
 
-import "6.824/mr"
+import (
+	"6.824/mr"
+)
 import crand "crypto/rand"
 import "math/big"
 import "strings"
@@ -21,7 +23,6 @@ func maybeCrash() {
 	max := big.NewInt(1000)
 	rr, _ := crand.Int(crand.Reader, max)
 	if rr.Int64() < 330 {
-		// crash!
 		os.Exit(1)
 	} else if rr.Int64() < 660 {
 		// delay for a while.
@@ -44,7 +45,6 @@ func Map(filename string, contents string) []mr.KeyValue {
 
 func Reduce(key string, values []string) string {
 	maybeCrash()
-
 	// sort values to ensure deterministic output.
 	vv := make([]string, len(values))
 	copy(vv, values)
