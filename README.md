@@ -2,4 +2,7 @@
 
 Checklist
 - [x] MapReduce
-- [ ] Raft (on-going)
+- [ ] Raft
+  - [x] 2A
+  - [ ] 2B
+  - [ ] 2C
