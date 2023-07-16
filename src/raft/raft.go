@@ -18,6 +18,7 @@ package raft
 //
 
 import (
+	"fmt"
 	"math/rand"
 	//	"bytes"
 	"sync"
@@ -52,16 +53,20 @@ type ApplyMsg struct {
 }
 
 type AppendEntries struct {
+	Term         int32
+	LeaderId     int
+	PrevLogIndex int // index of log entry immediately preceding new ones
+	PrevLogTerm  int32
+	Entries      []LogEntry
+	LeaderCommit int
 }
 
-type HeartbeatArgs struct {
-	LeaderId      int
-	LeaderTerm    int32
-	AppendEntries AppendEntries
-}
-
-type HeartbeatReply struct {
-	Ack bool
+type AppendEntriesReply struct {
+	Term    int32
+	Success bool
+	// because of network delay, some entries may be repeatedly sent to same peer
+	// this bring trouble when updating nextIndex
+	EntryAdded int
 }
 
 //
@@ -84,6 +89,12 @@ type RequestVoteReply struct {
 	Term        int32
 }
 
+type LogEntry struct {
+	Term     int32
+	Command  interface{}
+	logIndex int
+}
+
 const (
 	FOLLOWER  = 0
 	CANDIDATE = 1
@@ -100,23 +111,28 @@ type Raft struct {
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
-	state       int32 // 0: follower, 1: candidate, 2: leader
+	// Persistent state on all servers
 	currentTerm int32 // current term, increase monotonically
 	votedFor    int   // candidate id that received vote in current term
-	votes       int32 // votes received in current term
+	log         []LogEntry
 
+	// fields not mentioned in paper, but implemented for convenience
+	state           int32 // 0: follower, 1: candidate, 2: leader
 	recvHeartbeat   int32 // receive heartbeat from leader or not during one timeout
 	electionTimeout int64 // timeout for election
 	minDelay        int64
 	maxDelay        int64
 	heartbeat       int64 // heartbeat gap
 
-	lock         sync.Mutex
-	leaderIdLock sync.Mutex
-	// Your data here (2A, 2B, 2C).
-	// Look at the paper's Figure 2 for a description of what
-	// state a Raft server must maintain.
+	// volatile state on all servers
+	commitIndex int   // index of highest log entry known to be committed
+	lastApplied int32 // index of highest log entry applied to state machine
 
+	// volatile state on leaders
+	nextIndex  []int // for each server, index of the next log entry to send to that server
+	matchIndex []int // for each server, index of highest log entry known to be replicated on server
+
+	lock sync.Mutex
 }
 
 // return currentTerm and whether this server
@@ -261,6 +277,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 }
 
+// repeatedly send Heartbeat to all peers
 func (rf *Raft) sendHeartbeat() {
 	rf.mu.Lock()
 	isLeader := rf.isLeader()
@@ -268,54 +285,172 @@ func (rf *Raft) sendHeartbeat() {
 
 	for isLeader && !rf.killed() {
 		time.Sleep(time.Duration(rf.heartbeat) * time.Millisecond)
-		for i := 0; i < len(rf.peers); i++ {
-			if i == rf.me {
-				continue
-			}
-			rf.mu.Lock()
-			args := &HeartbeatArgs{LeaderId: rf.me, LeaderTerm: rf.currentTerm, AppendEntries: AppendEntries{}}
-			reply := &HeartbeatReply{}
-			rf.mu.Unlock()
-			rf.peers[i].Call("Raft.RecvHeartbeat", args, reply)
-		}
+		// it seems after being elected, the leader's term won't be changed
+		// maybe I should construct args out of the loop
 		rf.mu.Lock()
+		args := &AppendEntries{LeaderId: rf.me, Term: rf.currentTerm}
+		reply := &AppendEntriesReply{}
 		isLeader = rf.isLeader()
 		rf.mu.Unlock()
-		////fmt.Printf("%d sending heartbeat %v \n", rf.me, isLeader)
+
+		rf.broadcastHeartBeat(args, reply)
+	}
+}
+
+// broadcast AppendEntries to all peers (only used for log replication)
+// return true if majority of peers reach consensus
+func (rf *Raft) broadcastAppendEntries() bool {
+	callback := make(chan bool, len(rf.peers))
+	// appendEntries have been sent to itself already, so start from 1
+	numCallback := 1
+
+	for i := 0; i < len(rf.peers); i++ {
+		peer := i
+		if peer == rf.me {
+			continue
+		}
+		go func() {
+			rf.mu.Lock()
+			isLeader := rf.isLeader()
+			rf.mu.Unlock()
+			for isLeader && !rf.killed() {
+				rf.mu.Lock()
+				prevLogIndex := rf.nextIndex[peer] - 1
+				args := &AppendEntries{
+					LeaderId:     rf.me,
+					PrevLogIndex: prevLogIndex,
+					Term:         rf.currentTerm,
+					Entries:      rf.log[prevLogIndex+1:],
+					LeaderCommit: rf.commitIndex,
+				}
+				reply := &AppendEntriesReply{}
+				rf.mu.Unlock()
+
+				if ok := rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply); ok {
+					// update nextIndex and matchIndex for follower
+					if reply.Success {
+						callback <- true
+						rf.mu.Lock()
+						rf.nextIndex[peer] = args.PrevLogIndex + reply.EntryAdded + 1
+						rf.matchIndex[peer] = args.PrevLogIndex + reply.EntryAdded
+						rf.mu.Unlock()
+						return
+					} else { // if append entries failed, decrement nextIndex and retry until success
+						rf.mu.Lock()
+						rf.nextIndex[peer]--
+						rf.mu.Unlock()
+					}
+				} else {
+					// If followers crash or run slowly, or if network packets are lost,
+					//the leader retries Append Entries RPCs indefinitely (even after it has responded to the client)
+					// until all followers eventually store all log entries
+					DPrintf("%d send append entries to %d failed\n", rf.me, peer)
+				}
+			}
+		}()
+	}
+
+	for {
+		select {
+		case <-callback:
+			numCallback++
+			if numCallback == len(rf.peers)/2 {
+				// If there exists an N such that N > commitIndex,
+				// a majority of matchIndex[i] ≥ N,
+				// and log[N].term == currentTerm:
+				// set commitIndex = N
+				rf.mu.Lock()
+				rf.commitIndex = len(rf.log) - 1
+				rf.mu.Unlock()
+				return true
+			}
+		}
+	}
+	//fmt.Printf("%d sending heartbeat %v \n", rf.me, isLeader)
+}
+
+// broadcast heartbeat to all peers
+func (rf *Raft) broadcastHeartBeat(args *AppendEntries, reply *AppendEntriesReply) {
+	for i := 0; i < len(rf.peers); i++ {
+		peer := i
+		if peer == rf.me {
+			continue
+		}
+		go func() {
+			rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply)
+		}()
 	}
 }
 
 // leader does not send heartbeat to itself
-func (rf *Raft) RecvHeartbeat(args *HeartbeatArgs, reply *HeartbeatReply) {
-	rf.mu.Lock() //mu protects term, votedFor, state
+func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply) {
+	// entry is nil means heartbeat
+	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	if args.LeaderTerm < rf.currentTerm {
+	// Reply false if term < currentTerm
+	if args.Term < rf.currentTerm {
 		return
 	}
-	//fmt.Printf("%d recv heartbeat \n", rf.me)
-	switch rf.getState() {
-	case FOLLOWER:
-		atomic.StoreInt32(&rf.recvHeartbeat, 1)
-		rf.currentTerm = args.LeaderTerm
-		rf.votedFor = args.LeaderId
-	case CANDIDATE: // if a candidate receives heartbeat with term larger or equal, it should become follower
-		if args.LeaderTerm == rf.currentTerm {
-			//fmt.Printf("%d recv equal %d \n", rf.me, args.LeaderId)
-		}
-		rf.state = FOLLOWER
-		atomic.StoreInt32(&rf.recvHeartbeat, 1)
-		rf.currentTerm = args.LeaderTerm
-		rf.votedFor = args.LeaderId
-	case LEADER:
-		//fmt.Printf("leader %d term %d recv heartbeat from leader %d term %d \n", rf.me, rf.currentTerm, args.LeaderId, args.LeaderTerm)
-		if args.LeaderTerm > rf.currentTerm {
-			rf.state = FOLLOWER
-			rf.currentTerm = args.LeaderTerm
-			rf.votedFor = args.LeaderId
+	if args.Entries == nil {
+		//rf.mu.Lock()
+		//defer rf.mu.Unlock()
+		//fmt.Printf("%d recv heartbeat \n", rf.me)
+		switch rf.getState() {
+		case FOLLOWER:
 			atomic.StoreInt32(&rf.recvHeartbeat, 1)
-		} else { // this should never happen
-			//fmt.Printf("There are two leaders in the same term %d \n", rf.currentTerm)
+			rf.currentTerm = args.Term
+			rf.votedFor = args.LeaderId
+		case CANDIDATE: // if a candidate receives heartbeat with term larger or equal, it should become follower
+			if args.Term == rf.currentTerm {
+				//fmt.Printf("%d recv equal %d \n", rf.me, args.LeaderId)
+			}
+			rf.state = FOLLOWER
+			atomic.StoreInt32(&rf.recvHeartbeat, 1)
+			rf.currentTerm = args.Term
+			rf.votedFor = args.LeaderId
+		case LEADER:
+			//fmt.Printf("leader %d term %d recv heartbeat from leader %d term %d \n", rf.me, rf.currentTerm, args.LeaderId, args.LeaderTerm)
+			if args.Term > rf.currentTerm {
+				rf.state = FOLLOWER
+				rf.currentTerm = args.Term
+				rf.votedFor = args.LeaderId
+				atomic.StoreInt32(&rf.recvHeartbeat, 1)
+			} else { // this should never happen
+				//fmt.Printf("There are two leaders in the same term %d \n", rf.currentTerm)
+			}
 		}
+	} else {
+		reply.Success = false
+		reply.EntryAdded = 0
+		if len(rf.log)-1 >= args.PrevLogIndex {
+			// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm
+			if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+				return
+			}
+			for i := 0; i < len(args.Entries); i++ {
+				// If an existing entry conflicts with a new one (same index but different terms),
+				// delete the existing entry and all that follow it
+				if len(rf.log)-1 >= args.PrevLogIndex+1+i &&
+					rf.log[args.PrevLogIndex+1+i].Term != args.Entries[i].Term {
+					rf.log = rf.log[:args.PrevLogIndex+1+i]
+				}
+				// Append any new entries not already in the log
+				if len(rf.log)-1 < args.PrevLogIndex+1+i {
+					rf.log = append(rf.log, args.Entries[i])
+				}
+			}
+			// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+			if args.LeaderCommit > rf.commitIndex {
+				if args.LeaderCommit < len(rf.log)-1 {
+					rf.commitIndex = args.LeaderCommit
+				} else {
+					rf.commitIndex = len(rf.log) - 1
+				}
+			}
+			reply.Success = true
+			reply.EntryAdded = len(args.Entries) // todo
+		}
+		return
 	}
 }
 
@@ -334,12 +469,29 @@ func (rf *Raft) RecvHeartbeat(args *HeartbeatArgs, reply *HeartbeatReply) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
+	// Your code here (2B).
 	index := -1
 	term := -1
-	isLeader := true
 
-	// Your code here (2B).
+	rf.mu.Lock()
+	isLeader := rf.getState() == LEADER
+	rf.mu.Unlock()
 
+	if isLeader {
+		// appends the command to its log as a new entry
+		rf.mu.Lock()
+		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
+		rf.mu.Unlock()
+
+		// this being said the majority of peers reply
+		if rf.broadcastAppendEntries() {
+			// apply the entry to its state machine, currently just print it
+			fmt.Printf("%d apply %v \n", rf.me, command)
+
+			// returns the result of the execution to the client
+		}
+
+	}
 	return index, term, isLeader
 }
 
