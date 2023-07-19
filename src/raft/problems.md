@@ -17,7 +17,15 @@ One way is to use 'rf.me' as the seed.
 
 2. Sending vote request in parallel and counter votes asynchronously.
 If not, then under situation that some servers are having network problems, 
-the leader will be elected very slowly (you have to wait for RPC timeout to determine peer voting or not).
+the leader will be elected very slowly (you have to wait for RPC timeout to determine peer voting or not). 
+
+Of course, setting a proper timeout can also solve this problem, 
+but it seems guider doesn't want us to do this according to the comment in `raft.go`:
+```go
+// Call() is guaranteed to return (perhaps after a delay) *except* if the
+// handler function on the server side does not return.  Thus there
+// is no need to implement your own timeouts around Call().
+```
 
 ## Log replication
 ![img.png](img.png)
@@ -36,3 +44,17 @@ A: At the very beginning, I don't think this question makes any sense, as we alw
 
 After thinking, I realize that it is exactly "leader cannot determine commitment using log entries from older terms" 
 that makes 'commitIndex' field necessary.
+
+Failed for Rejoin:
+Attention when sending entries: isLeader should be constructed in the same lock as args to ensure consistency.
+
+Failed for RPC count:
+Leader is given a series of entries to replicate, and it will send RPC to followers.
+And leader actually send them in first rounds. However, because of my design, even all entries are sent, 
+leader would still give it a try for each arrived command. No doubt, these AppendEntries RPC will contain no entries.
+Follower mistakenly treat them as heartbeat, and didn't set `reply.Success = true` (this is my negligence).
+So, leader falsely think that it failed to replicate entries, and it will increase nextIndex and retry.
+
+In short, there are two mistakes I did. First of all, leader should check whether there are entries to replicate.
+Secondly, follower should set `reply.Success = true` when it receives heartbeat. With either of them, it will work normally.
+I prefer the second one, because it is more consistent with the original design.

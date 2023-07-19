@@ -4,12 +4,13 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="add some scripts for mapreduce">
-      <change afterPath="$PROJECT_DIR$/src/raft/img.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/raft/problems.md" afterDir="false" />
+    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="add problems.md&#10;for raft">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/labgob/labgob.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/labgob/labgob.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/problems.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/problems.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/test_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/test_test.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,25 +29,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "full.screen.before.presentation.mode": "false",
-    "git-widget-placeholder": "master",
-    "go.import.settings.migrated": "true",
-    "last_opened_file_path": "T:/project/6.824/src/raft",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "two.files.diff.last.used.file": "T:/project/6.824/src/main/mr-tmp/mr-correct-indexer.txt"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;full.screen.before.presentation.mode&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;T:/project/6.824/src/raft&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;two.files.diff.last.used.file&quot;: &quot;T:/project/6.824/src/main/mr-tmp/mr-correct-indexer.txt&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="T:\project\6.824\src\raft" />
@@ -56,7 +57,7 @@
       <recent name="T:\project\6.824\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestInitialElection2A in 6.824/raft (3)">
+  <component name="RunManager" selected="Go Test.TestBackup2B in 6.824/raft">
     <configuration name="go build 6.824" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
       <module name="6.824" />
       <target name="WSL - Ubuntu" />
@@ -71,7 +72,7 @@
       <option name="disconnectOption" value="ASK" />
       <method v="2" />
     </configuration>
-    <configuration name="TestInitialElection2A in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestBackup2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -80,10 +81,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestInitialElection2A\E$" />
+      <pattern value="^\QTestBackup2B\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestInitialElection2A in 6.824/raft (2)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestConcurrentStarts2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -92,10 +93,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestInitialElection2A\E$" />
+      <pattern value="^\QTestConcurrentStarts2B\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestInitialElection2A in 6.824/raft (3)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestCount2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -104,10 +105,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestInitialElection2A\E$" />
+      <pattern value="^\QTestCount2B\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReElection2A in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestFailNoAgree2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -116,10 +117,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestReElection2A\E$" />
+      <pattern value="^\QTestFailNoAgree2B\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReElection2A in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestRejoin2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -128,25 +129,25 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestReElection2A\E$" />
+      <pattern value="^\QTestRejoin2B\E$" />
       <method v="2" />
     </configuration>
     <list>
       <item itemvalue="Go Build.go build 6.824" />
       <item itemvalue="Go Remote.Unnamed" />
-      <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (3)" />
-      <item itemvalue="Go Test.TestReElection2A in 6.824/raft (1)" />
-      <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (2)" />
-      <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (1)" />
-      <item itemvalue="Go Test.TestReElection2A in 6.824/raft" />
+      <item itemvalue="Go Test.TestBackup2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestConcurrentStarts2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestCount2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestFailNoAgree2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (3)" />
-        <item itemvalue="Go Test.TestReElection2A in 6.824/raft (1)" />
-        <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (2)" />
-        <item itemvalue="Go Test.TestInitialElection2A in 6.824/raft (1)" />
-        <item itemvalue="Go Test.TestReElection2A in 6.824/raft" />
+        <item itemvalue="Go Test.TestBackup2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestCount2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestConcurrentStarts2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestFailNoAgree2B in 6.824/raft" />
       </list>
     </recent_temporary>
   </component>
@@ -168,7 +169,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="pass raft leader election" />
     <MESSAGE value="add some scripts for mapreduce" />
-    <option name="LAST_COMMIT_MESSAGE" value="add some scripts for mapreduce" />
+    <MESSAGE value="add problems.md&#10;for raft" />
+    <option name="LAST_COMMIT_MESSAGE" value="add problems.md&#10;for raft" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>

@@ -300,7 +300,7 @@ func TestFailAgree2B(t *testing.T) {
 
 	// re-connect
 	cfg.connect((leader + 1) % servers)
-
+	fmt.Println(leader+1, "rejoin")
 	// the full set of servers should preserve
 	// previous agreements, and be able to agree
 	// on new commands.
@@ -474,8 +474,8 @@ func TestRejoin2B(t *testing.T) {
 
 	// leader network failure
 	leader1 := cfg.checkOneLeader()
+	fmt.Println("disconn leader1:", leader1)
 	cfg.disconnect(leader1)
-
 	// make old leader try to agree on some entries
 	cfg.rafts[leader1].Start(102)
 	cfg.rafts[leader1].Start(103)
@@ -486,14 +486,18 @@ func TestRejoin2B(t *testing.T) {
 
 	// new leader network failure
 	leader2 := cfg.checkOneLeader()
+	fmt.Println("disconn leader2:", leader2)
 	cfg.disconnect(leader2)
+	println(cfg.rafts[leader2].GetState())
 
 	// old leader connected again
+	fmt.Println("reconn leader1:", leader1)
 	cfg.connect(leader1)
-
+	fmt.Println("pass in 104")
 	cfg.one(104, 2, true)
 
 	// all together now
+	fmt.Println("reconn leader2:", leader2)
 	cfg.connect(leader2)
 
 	cfg.one(105, servers, true)
@@ -616,6 +620,7 @@ loop:
 		cmds := []int{}
 		for i := 1; i < iters+2; i++ {
 			x := int(rand.Int31())
+			fmt.Println("start:", x)
 			cmds = append(cmds, x)
 			index1, term1, ok := cfg.rafts[leader].Start(x)
 			if term1 != term {
