@@ -58,3 +58,6 @@ So, leader falsely think that it failed to replicate entries, and it will increa
 In short, there are two mistakes I did. First of all, leader should check whether there are entries to replicate.
 Secondly, follower should set `reply.Success = true` when it receives heartbeat. With either of them, it will work normally.
 I prefer the second one, because it is more consistent with the original design.
+
+## Persistence
+Some state need to be persisted, including currentTerm, votedFor, log[].

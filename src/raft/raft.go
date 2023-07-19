@@ -18,8 +18,12 @@ package raft
 //
 
 import (
+	"6.824/labgob"
+	"bytes"
 	"fmt"
 	"math/rand"
+	"runtime"
+
 	//	"bytes"
 	"sync"
 	"sync/atomic"
@@ -62,7 +66,8 @@ type AppendEntries struct {
 }
 
 type AppendEntriesReply struct {
-	Term    int32
+	Term int32
+	// Success is true if follower contained entry matching AppendEntries.PrevLogIndex and AppendEntries.PrevLogTerm
 	Success bool
 	// because of network delay, some entries may be repeatedly sent to same peer
 	// this bring trouble when updating nextIndex
@@ -97,6 +102,10 @@ type LogEntry struct {
 	Command interface{}
 }
 
+func (l LogEntry) String() string {
+	return fmt.Sprintf("Term: %d, Command: %v", l.Term, l.Command)
+}
+
 const (
 	FOLLOWER  = 0
 	CANDIDATE = 1
@@ -115,6 +124,7 @@ type Raft struct {
 	applyCh   chan ApplyMsg
 
 	// Persistent state on all servers
+	// Updated on stable storage before responding to RPCs， which means should be persisted when the state changes
 	currentTerm int        // current term, increase monotonically
 	votedFor    int        // candidate id that received vote in current term
 	log         []LogEntry // first index is 1
@@ -139,6 +149,49 @@ type Raft struct {
 	peerLock []sync.Mutex // each peer has a lock, used when sending log replication
 }
 
+func (rf *Raft) changeCurrentTerm(term int) {
+	rf.currentTerm = term
+	rf.persist()
+}
+
+func (rf *Raft) changeVotedFor(votedFor int) {
+	rf.votedFor = votedFor
+	rf.persist()
+}
+
+func (rf *Raft) changeLog(log []LogEntry) {
+	rf.log = log
+	rf.persist()
+}
+
+func (rf *Raft) beLeader() {
+	rf.state = LEADER
+	rf.nextIndex = make([]int, len(rf.peers))
+	for i := range rf.nextIndex { // log index starts from 1, so nextIndex init as 1
+		rf.nextIndex[i] = 1
+	}
+	rf.matchIndex = make([]int, len(rf.peers))
+}
+
+func (rf *Raft) beCandidate() {
+	rf.state = CANDIDATE
+}
+
+func (rf *Raft) beFollower(term int, votedFor int) {
+	rf.state = FOLLOWER
+	rf.currentTerm = term
+	rf.votedFor = votedFor
+	rf.persist()
+}
+
+func (rf *Raft) isLeader() bool {
+	return rf.state == LEADER
+}
+
+func (rf *Raft) getState() int32 {
+	return rf.state
+}
+
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
@@ -156,15 +209,18 @@ func (rf *Raft) GetState() (int, bool) {
 // where it can later be retrieved after a crash and restart.
 // see paper's Figure 2 for a description of what should be persistent.
 //
+// currentTerm, votedFor, log[] should be persistent
+// persist should be called each time the state changes
 func (rf *Raft) persist() {
 	// Your code here (2C).
-	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	data := w.Bytes()
+	// fmt.Printf("%d persist %s \n", rf.me, rf.log)
+	rf.persister.SaveRaftState(data)
 }
 
 //
@@ -174,19 +230,29 @@ func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
-	// Your code here (2C).
-	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	var currentTerm int
+	var votedFor int
+	var log []LogEntry
+	if err := d.Decode(&currentTerm); err != nil {
+		rf.currentTerm = 0
+	} else {
+		rf.currentTerm = currentTerm
+	}
+
+	if err := d.Decode(&votedFor); err != nil {
+		rf.votedFor = -1
+	} else {
+		rf.votedFor = votedFor
+	}
+
+	// fmt.Printf("%d read %s \n", rf.me, rf.log)
+	if err := d.Decode(&log); err != nil {
+		rf.log = make([]LogEntry, 1)
+	} else {
+		rf.log = log
+	}
 }
 
 //
@@ -205,7 +271,6 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 // that index. Raft should now trim its log as much as possible.
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (2D).
-
 }
 
 //
@@ -262,8 +327,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		(rf.log[len(rf.log)-1].Term == args.PrevLogEntryTerm && len(rf.log)-1 > args.LastLogEntryIndex) {
 		//fmt.Printf("%d recv %v \n", rf.me, args)
 		if args.CandidateTerm > rf.currentTerm {
-			rf.state = FOLLOWER
-			rf.currentTerm = args.CandidateTerm // todo: it is necessary for log replication!
+			rf.beFollower(args.CandidateTerm, args.CandidateId)
 		}
 		reply.Term = rf.currentTerm
 		reply.VoteGranted = false
@@ -272,10 +336,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 	// if candidate term larger, then the current peer (no matter in LEADER or CANDIDATE state) should be follower
 	if args.CandidateTerm > rf.currentTerm {
-		rf.currentTerm = args.CandidateTerm
+		rf.beFollower(args.CandidateTerm, args.CandidateId)
 		//fmt.Printf("rf.me %d become follower \n", rf.me)
-		rf.state = FOLLOWER
-		rf.votedFor = args.CandidateId
 	}
 
 	// due to network issue, follower might receive 2 requests from same candidate;
@@ -283,7 +345,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
-		rf.votedFor = args.CandidateId
+		rf.changeVotedFor(args.CandidateId)
 		// the vote req is also viewed as heartbeat
 		// to prevent too much follower get into CANDIDATE state
 		atomic.StoreInt32(&rf.recvHeartbeat, 1)
@@ -311,7 +373,7 @@ func (rf *Raft) sendHeartbeat() {
 }
 
 // broadcast AppendEntries to all peers (only used for log replication)
-// return true if majority of peers reach consensus
+// return true if the majority of peers reach consensus
 func (rf *Raft) broadcastAppendEntries() bool {
 	callback := make(chan bool, len(rf.peers))
 	// appendEntries have been sent to itself already, so start from 1
@@ -429,32 +491,30 @@ func (rf *Raft) broadcastHeartBeat(args *AppendEntries) {
 
 // leader does not send heartbeat to itself
 func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply) {
-	// entry is nil means heartbeat
+	// 		if entry is nil means heartbeat OR just append no entries(cuz leader and follower's log are already synced)
+	// in either case above, reply.Success = true.
+	// 		else need to do log replication
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	reply.Success = true //heartbeat doesn't care about success
+	reply.Success = true // heartbeat doesn't care about success
 	if args.Term < rf.currentTerm {
 		reply.Success = false
 		return
 	}
 
-	//fmt.Printf("%d term %d recv entries from %d term %d with %v \n", rf.me, rf.currentTerm, args.LeaderId, args.Term, args.Entries)
+	// fmt.Printf("%d term %d recv entries from %d term %d with %v \n", rf.me, rf.currentTerm, args.LeaderId, args.Term, args.Entries)
 	atomic.StoreInt32(&rf.recvHeartbeat, 1)
 
 	switch rf.getState() {
 	case FOLLOWER:
-		rf.currentTerm = args.Term
-		rf.votedFor = args.LeaderId
+		// beFollower function is idempotent
+		rf.beFollower(args.Term, args.LeaderId)
 	case CANDIDATE: // if a candidate receives heartbeat with term larger or equal, it should become follower
-		rf.state = FOLLOWER
-		rf.currentTerm = args.Term
-		rf.votedFor = args.LeaderId
+		rf.beFollower(args.Term, args.LeaderId)
 	case LEADER:
 		//fmt.Printf("leader %d term %d recv heartbeat from leader %d term %d \n", rf.me, rf.currentTerm, args.LeaderId, args.Term)
 		if args.Term > rf.currentTerm {
-			rf.state = FOLLOWER
-			rf.currentTerm = args.Term
-			rf.votedFor = args.LeaderId
+			rf.beFollower(args.Term, args.LeaderId)
 		} else { // this should never happen
 			//fmt.Printf("There are two leaders in the same term %d \n", rf.currentTerm)
 		}
@@ -462,7 +522,12 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 	// log replication
 	if args.Entries != nil {
 		//fmt.Printf("%d apply entries %v \n", rf.me, args.Entries)
-		if args.PrevLogIndex <= len(rf.log)-1 {
+
+		// if args.PrevLogIndex > len(rf.log)-1 then we can't replicate the log
+		// else, trying to replicate the log
+		if args.PrevLogIndex > len(rf.log)-1 {
+			//do nothing
+		} else {
 			if args.PrevLogIndex != -1 && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 				reply.Success = false
 				return
@@ -482,6 +547,10 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 			}
 			reply.Success = true
 			reply.LastLogIndex = len(rf.log) - 1
+
+			// now the log is replicated, we can persist log,
+			// I could probably call changeLog() each time in for-loop, but I think persisting once is better
+			rf.persist()
 		}
 		//fmt.Printf("rf.me%d with term%d log%v\n", rf.me, rf.currentTerm, rf.log)
 	}
@@ -500,8 +569,9 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 }
 
 func (rf *Raft) applyLog(start int, end int) {
-	//fmt.Println("apply log", start, end, "for", rf.log)
 	for i := start; i <= end; i++ {
+		//println(rf.me, i, rf.log[i].Command.(int), start, end, rf.lastApplied)
+		//fmt.Printf("%d apply log %v \n", rf.me, rf.log)
 		rf.applyCh <- ApplyMsg{
 			CommandValid: true,
 			Command:      rf.log[i].Command,
@@ -525,7 +595,6 @@ func (rf *Raft) applyLog(start int, end int) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	// Your code here (2B).
 	index := -1
 	term := -1
 	rf.mu.Lock()
@@ -535,8 +604,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if isLeader {
 		// appends the command to its log as a new entry
 		rf.mu.Lock()
-		//fmt.Printf("leader %d term %d recv command %v \n", rf.me, rf.currentTerm, command)
-		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
+		// fmt.Printf("leader %d term %d recv command %v \n", rf.me, rf.currentTerm, command)
+		rf.changeLog(append(rf.log, LogEntry{Term: rf.currentTerm, Command: command}))
 		index = len(rf.log) - 1
 		term = rf.currentTerm
 		rf.mu.Unlock()
@@ -606,10 +675,11 @@ func (rf *Raft) election() {
 	// should I unlock until first round heartbeat is sent?
 	// 1. increment current term
 	rf.mu.Lock()
-	rf.currentTerm++
+	rf.currentTerm += 1
 	//fmt.Printf("%d in %d \n", rf.me, rf.currentTerm)
 	// 2. vote for self
 	rf.votedFor = rf.me
+	rf.persist() // persist above 2 changes
 	rf.mu.Unlock()
 	// 3. reset election timeout
 	// because I use time.Sleep() to simulate the timeout, all I need is just to return to ticker immediately
@@ -663,9 +733,7 @@ func (rf *Raft) election() {
 					return
 				}
 				if reply.Term > rf.currentTerm {
-					rf.currentTerm = reply.Term
-					rf.state = FOLLOWER
-					rf.votedFor = -1
+					rf.beFollower(reply.Term, -1)
 					rf.mu.Unlock()
 					return
 				}
@@ -684,31 +752,6 @@ func (rf *Raft) election() {
 			}
 		}
 	}()
-}
-
-func (rf *Raft) beLeader() {
-	rf.state = LEADER
-	rf.nextIndex = make([]int, len(rf.peers))
-	for i := range rf.nextIndex { // log index starts from 1, so nextIndex init as 1
-		rf.nextIndex[i] = 1
-	}
-	rf.matchIndex = make([]int, len(rf.peers))
-}
-
-func (rf *Raft) beCandidate() {
-	rf.state = CANDIDATE
-}
-
-func (rf *Raft) beFollower() {
-	rf.state = FOLLOWER
-}
-
-func (rf *Raft) isLeader() bool {
-	return rf.state == LEADER
-}
-
-func (rf *Raft) getState() int32 {
-	return rf.state
 }
 
 //
@@ -740,6 +783,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applyCh = applyCh
 
 	rf.log = make([]LogEntry, 1, 100)
+
 	rf.nextIndex = make([]int, len(peers))
 	for i := range rf.nextIndex { // log index starts from 1, so nextIndex init as 1
 		rf.nextIndex[i] = 1
@@ -757,3 +801,21 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	return rf
 }
+
+// used for debugging
+func printStack() {
+	buf := make([]byte, 1024)
+	n := runtime.Stack(buf, true)
+	fmt.Printf("%s\n", buf[:n])
+}
+
+/*
+Index:  1  | 2 | 3 | 4 | 5
+Term:   1  | 1 | 2 | 2 | 3
+Command: A | B | C | D | E
+Now assume the leader wants to send the follower two new log entries, F and G, from term 3.
+
+In this RPC, the leader needs to tell the follower where to insert the new entries.
+In this case, prevLogIndex will be 5 (because F and G should be appended after E)
+and prevLogTerm will be 3 (because the entry with index 5 belongs to term 3).
+*/

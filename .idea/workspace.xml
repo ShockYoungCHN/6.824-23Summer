@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="add problems.md&#10;for raft">
+    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="finnish raft 2B">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/labgob/labgob.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/labgob/labgob.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/problems.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/problems.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/test_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/test_test.go" afterDir="false" />
@@ -40,7 +38,7 @@
     &quot;full.screen.before.presentation.mode&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;T:/project/6.824/src/raft&quot;,
+    &quot;last_opened_file_path&quot;: &quot;T:/project/open-lambda&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
@@ -57,7 +55,7 @@
       <recent name="T:\project\6.824\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestBackup2B in 6.824/raft">
+  <component name="RunManager" selected="Go Test.TestFigure8Unreliable2C in 6.824/raft">
     <configuration name="go build 6.824" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
       <module name="6.824" />
       <target name="WSL - Ubuntu" />
@@ -72,7 +70,7 @@
       <option name="disconnectOption" value="ASK" />
       <method v="2" />
     </configuration>
-    <configuration name="TestBackup2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestFigure82C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -81,10 +79,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestBackup2B\E$" />
+      <pattern value="^\QTestFigure82C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestConcurrentStarts2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestFigure8Unreliable2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -93,10 +91,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestConcurrentStarts2B\E$" />
+      <pattern value="^\QTestFigure8Unreliable2C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestCount2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPersist22C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -105,10 +103,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestCount2B\E$" />
+      <pattern value="^\QTestPersist22C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestFailNoAgree2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPersist32C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -117,10 +115,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestFailNoAgree2B\E$" />
+      <pattern value="^\QTestPersist32C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestRejoin2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestUnreliableAgree2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -129,25 +127,25 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestRejoin2B\E$" />
+      <pattern value="^\QTestUnreliableAgree2C\E$" />
       <method v="2" />
     </configuration>
     <list>
       <item itemvalue="Go Build.go build 6.824" />
       <item itemvalue="Go Remote.Unnamed" />
-      <item itemvalue="Go Test.TestBackup2B in 6.824/raft" />
-      <item itemvalue="Go Test.TestConcurrentStarts2B in 6.824/raft" />
-      <item itemvalue="Go Test.TestCount2B in 6.824/raft" />
-      <item itemvalue="Go Test.TestFailNoAgree2B in 6.824/raft" />
-      <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestFigure82C in 6.824/raft" />
+      <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
+      <item itemvalue="Go Test.TestPersist22C in 6.824/raft" />
+      <item itemvalue="Go Test.TestPersist32C in 6.824/raft" />
+      <item itemvalue="Go Test.TestUnreliableAgree2C in 6.824/raft" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestBackup2B in 6.824/raft" />
-        <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
-        <item itemvalue="Go Test.TestCount2B in 6.824/raft" />
-        <item itemvalue="Go Test.TestConcurrentStarts2B in 6.824/raft" />
-        <item itemvalue="Go Test.TestFailNoAgree2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
+        <item itemvalue="Go Test.TestUnreliableAgree2C in 6.824/raft" />
+        <item itemvalue="Go Test.TestFigure82C in 6.824/raft" />
+        <item itemvalue="Go Test.TestPersist32C in 6.824/raft" />
+        <item itemvalue="Go Test.TestPersist22C in 6.824/raft" />
       </list>
     </recent_temporary>
   </component>
@@ -170,10 +168,27 @@
     <MESSAGE value="pass raft leader election" />
     <MESSAGE value="add some scripts for mapreduce" />
     <MESSAGE value="add problems.md&#10;for raft" />
-    <option name="LAST_COMMIT_MESSAGE" value="add problems.md&#10;for raft" />
+    <MESSAGE value="finnish raft 2B" />
+    <option name="LAST_COMMIT_MESSAGE" value="finnish raft 2B" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/labgob/labgob.go</url>
+          <line>170</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
+          <line>795</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/6_824$TestInitialElection2A_in_6_824_raft.out" NAME="TestInitialElection2A in 6.824/raft Coverage Results" MODIFIED="1688961334947" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
