@@ -4,5 +4,5 @@ Checklist
 - [x] MapReduce
 - [ ] Raft
   - [x] 2A
-  - [ ] 2B
+  - [x] 2B
   - [ ] 2C
