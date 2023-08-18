@@ -15,7 +15,7 @@ time.Sleep(time.Duration(randomDelay) * time.*Millisecond)
 Because the goroutines are running almost at the same time, the seed is the same.
 One way is to use 'rf.me' as the seed.
 
-2. Sending vote request in parallel and counter votes asynchronously.
+2. Sending vote request in parallel and counting votes asynchronously.
 If not, then under situation that some servers are having network problems, 
 the leader will be elected very slowly (you have to wait for RPC timeout to determine peer voting or not). 
 
@@ -59,5 +59,69 @@ In short, there are two mistakes I did. First of all, leader should check whethe
 Secondly, follower should set `reply.Success = true` when it receives heartbeat. With either of them, it will work normally.
 I prefer the second one, because it is more consistent with the original design.
 
+`TestConcurrentStarts2B` failed once while running it every 500 times.
+It is caused by  
+
 ## Persistence
-Some state need to be persisted, including currentTerm, votedFor, log[].
+This part is simple, but there is a test `TestFigure8Unreliable2C` hard to pass.
+```log
+2023/08/15 22:03:31 3 send append entries to 0 failed
+2023/08/15 22:03:31 1 send append entries to 0 failed
+2023/08/15 22:03:32 1 send append entries to 3 failed
+2023/08/15 22:03:32 1 send append entries to 4 failed
+2023/08/15 22:03:32 3 send append entries to 2 failed
+2023/08/15 22:03:32 1 send append entries to 3 failed
+2023/08/15 22:03:35 1 send append entries to 4 failed
+2023/08/15 22:03:36 1 send append entries to 2 failed
+2023/08/15 22:03:38 1 send append entries to 3 failed
+2023/08/15 22:03:39 1 send append entries to 4 failed
+2023/08/15 22:03:39 1 send append entries to 4 failed
+2023/08/15 22:03:39 1 send append entries to 4 failed
+2023/08/15 22:03:39 1 send append entries to 4 failed
+```
+Above log shows that the network is really unstable TestFigure8Unreliable2C.
+After reading a more detailed log, I find that the leader is not able to commit entries.
+It seems it took too long time for leader to sync committed logs to followers.
+The bug existed in `* b2ed23c finnish raft 2B`, the commitIndex update method does have its problem.
+Now I use a `updateCommitIndex` function to update commitIndex, and it works.
+However, broadcast entries should also be changed. 
+Broadcast new entries and heartbeat should be merged into one function(not implemented though). 
+More specifically, the leader send heartbeat periodically, 
+if there are new entries to replicate, then send them, otherwise, send AppendEntries with no entries.
+
+## Snapshot
+Snapshot means some log entries are no longer needed(these logs can be compressed), 
+thus we can take a snapshot and discard these entries.
+First tricky thing is how do we trim the log. 
+To make things simpler, I will just call `the original log` as original log, and `the log with snapshot` as real log.
+`lastIncludeIndex` is always an index on the original log.
+An example is shown below:
+
+| original log | index0 | index1 | index2 | index3 | index4 | index5 | index6 |
+|--------------|--------|--------|--------|--------|--------|--------|--------|
+| Command      | 0      | 1      | 2      | 3      | 4      | 5      | 6      |
+| Term         | 0      | 1      | 1      | 1      | 1      | 1      | 1      |
+
+Suppose we take a snapshot at index 5, then `lastIncludeIndex` becomes 3, and `lastIncludeTerm` becomes 1.
+Then, the real log should be:
+
+| real log | index0 | index1 | index2 | index3 |
+|----------|--------|--------|--------|--------|
+| Command  | 3      | 4      | 5      | 6      |
+| Term     | 1      | 1      | 1      | 1      |
+
+The first entry in real log is cmd 3, actually cmd 3 is included in the snapshot, but I still keep it in real log.
+The reason is in my original log design, first entry is always empty.
+To keep consistent with the original design, I just keep it and set it to empty later.
+
+Then, we need to turn the index on the original log into the log with snapshot.
+it can be express as IndexOrgLog = IndexRealLog + lastIncludeIndex, namely, IndexRealLog = IndexOrgLog - lastIncludeIndex.
+
+In all, I call the real log before snapshot as $snapshot_1$, and the real log after snapshot as $log after snapshot_2$.
+$snapshot_2 = snapshot_1[Index-lastIncludeIndex:]$, `index` is the parameter passed in `Snapshot` func, 
+means the entry from 0 to Index(inclusive) on the original log should be included in the snapshot.
+
+
+At very beginning, I have some misunderstanding about snapshot. I thought I have to store the snapshot inside raft leader.
+Well actually, the snapshot is stored in state machine.
+

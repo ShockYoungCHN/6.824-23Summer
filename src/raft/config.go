@@ -358,7 +358,7 @@ func (cfg *config) cleanup() {
 
 // attach server i to the net.
 func (cfg *config) connect(i int) {
-	// fmt.Printf("connect(%d)\n", i)
+	// log.Printf("connect(%d)\n", i)
 
 	cfg.connected[i] = true
 
@@ -381,7 +381,7 @@ func (cfg *config) connect(i int) {
 
 // detach server i from the net.
 func (cfg *config) disconnect(i int) {
-	// fmt.Printf("disconnect(%d)\n", i)
+	// log.Printf("disconnect(%d)\n", i)
 
 	cfg.connected[i] = false
 
@@ -588,6 +588,18 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 			t1 := time.Now()
 			for time.Since(t1).Seconds() < 2 {
 				nd, cmd1 := cfg.nCommitted(index)
+
+				// debugging code
+				//if cmd1 != nil {
+				//	if value, ok := cmd1.(int); ok {
+				//		log.Printf("%d servers think %d committed", nd, value)
+				//	} else {
+				//		log.Printf("cmd1 is not of type int")
+				//	}
+				//} else {
+				//	log.Printf("cmd1 at %d is nil", index)
+				//}
+
 				if nd > 0 && nd >= expectedServers {
 					// committed
 					if cmd1 == cmd {
