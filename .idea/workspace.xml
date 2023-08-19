@@ -9,7 +9,6 @@
       <change beforePath="$PROJECT_DIR$/src/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/problems.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/problems.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/raft/util.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/util.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +42,7 @@
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;Errors&quot;,
     &quot;two.files.diff.last.used.file&quot;: &quot;T:/project/6.824/src/main/mr-tmp/mr-correct-indexer.txt&quot;
   }
 }</component>
@@ -56,7 +55,7 @@
       <recent name="T:\project\6.824\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestUnreliableChurn2C in 6.824/raft">
+  <component name="RunManager" selected="Go Test.TestReliableChurn2C in 6.824/raft (1)">
     <configuration name="go build 6.824" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
       <module name="6.824" />
       <target name="WSL - Ubuntu" />
@@ -71,7 +70,7 @@
       <option name="disconnectOption" value="ASK" />
       <method v="2" />
     </configuration>
-    <configuration name="TestFigure8Unreliable2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestFigure8Unreliable2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -83,7 +82,7 @@
       <pattern value="^\QTestFigure8Unreliable2C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestRejoin2B in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestReliableChurn2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -92,7 +91,7 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestRejoin2B\E$" />
+      <pattern value="^\QTestReliableChurn2C\E$" />
       <method v="2" />
     </configuration>
     <configuration name="TestReliableChurn2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -107,7 +106,7 @@
       <pattern value="^\QTestReliableChurn2C\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestUnreliableAgree2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestUnreliableChurn2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -116,7 +115,7 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestUnreliableAgree2C\E$" />
+      <pattern value="^\QTestUnreliableChurn2C\E$" />
       <method v="2" />
     </configuration>
     <configuration name="TestUnreliableChurn2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -134,19 +133,19 @@
     <list>
       <item itemvalue="Go Build.go build 6.824" />
       <item itemvalue="Go Remote.Unnamed" />
-      <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft (1)" />
-      <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
+      <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft (1)" />
+      <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft (1)" />
+      <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
       <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft" />
-      <item itemvalue="Go Test.TestUnreliableAgree2C in 6.824/raft (1)" />
       <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft" />
-        <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft (1)" />
-        <item itemvalue="Go Test.TestRejoin2B in 6.824/raft" />
+        <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft (1)" />
+        <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft (1)" />
         <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft" />
-        <item itemvalue="Go Test.TestUnreliableAgree2C in 6.824/raft (1)" />
+        <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft" />
+        <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
       </list>
     </recent_temporary>
   </component>
@@ -193,6 +192,36 @@
           <url>file://$PROJECT_DIR$/src/raft/config.go</url>
           <line>620</line>
           <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
+          <line>1172</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/raft.go</url>
+          <line>345</line>
+          <option name="timeStamp" value="18" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
+          <line>976</line>
+          <option name="timeStamp" value="19" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
+          <line>1024</line>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
+          <line>1029</line>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/config.go</url>
+          <line>589</line>
+          <option name="timeStamp" value="22" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

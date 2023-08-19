@@ -590,15 +590,15 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 				nd, cmd1 := cfg.nCommitted(index)
 
 				// debugging code
-				//if cmd1 != nil {
-				//	if value, ok := cmd1.(int); ok {
-				//		log.Printf("%d servers think %d committed", nd, value)
-				//	} else {
-				//		log.Printf("cmd1 is not of type int")
-				//	}
-				//} else {
-				//	log.Printf("cmd1 at %d is nil", index)
-				//}
+				if cmd1 != nil {
+					if value, ok := cmd1.(int); ok {
+						log.Printf("%d servers think %d in index %d committed", nd, value, index)
+					} else {
+						log.Printf("cmd1 is not of type int")
+					}
+				} else {
+					log.Printf("cmd1 at %d is nil", index)
+				}
 
 				if nd > 0 && nd >= expectedServers {
 					// committed

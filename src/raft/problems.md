@@ -60,7 +60,7 @@ Secondly, follower should set `reply.Success = true` when it receives heartbeat.
 I prefer the second one, because it is more consistent with the original design.
 
 `TestConcurrentStarts2B` failed once while running it every 500 times.
-It is caused by  
+It is caused by the follower not synced with leader but still trying to commit entries.
 
 ## Persistence
 This part is simple, but there is a test `TestFigure8Unreliable2C` hard to pass.
@@ -121,6 +121,26 @@ In all, I call the real log before snapshot as $snapshot_1$, and the real log af
 $snapshot_2 = snapshot_1[Index-lastIncludeIndex:]$, `index` is the parameter passed in `Snapshot` func, 
 means the entry from 0 to Index(inclusive) on the original log should be included in the snapshot.
 
+Then, the tricky thing is to decide how to change the code to fit the log with snapshot.
+Generally, my strategy is to change the code as little as possible, I decide to just change 
+how we access the log, and how we update the log. 
+Another reason is that different raft nodes may take snapshot at different time, namely the log are trimmed 
+at different log index. 
+If we send the real index to follower, then follower will get confused, because the log on leader is different from follower.
+
+Let's consider it line by line.
+1. Vote process: seems no change.
+2. Log replication: How does leader broadcast AppendEntries RPC to followers, and how should follower respond.
+3. Heartbeat: care about commitIndex, it is the index on the original log, and should be changed.
+
+Potential deadlock:
+in commit `5617c70`, snapshot will be taken when there are too many logs committed instinctively. 
+This happens after you send a applyMsg to the state machine. Then test code will call snapshot(), which also requires lock.
+However, while sending applyMsg, the raft is already locked. Thus deadlock happens.
+
+I need to make a few changes, but due to the reason that my applyLog function is not well-designed (it will only be called 
+after leader or follower update commitIndex) and releasing lock makes my code look ugly. 
+I finally decide to set another goroutine to run applyLog.
 
 At very beginning, I have some misunderstanding about snapshot. I thought I have to store the snapshot inside raft leader.
 Well actually, the snapshot is stored in state machine.
