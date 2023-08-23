@@ -4,8 +4,9 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="pass 2D tests">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="timeout problem happens every 20 tests, to be solved">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +59,7 @@
       <recent name="T:\project\6.824\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestSnapshotAllCrash2D in 6.824/raft">
+  <component name="RunManager" selected="Go Test.TestSnapshotAllCrash2D in 6.824/raft (1)">
     <configuration name="go build 6.824" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
       <module name="6.824" />
       <target name="WSL - Ubuntu" />
@@ -73,7 +74,7 @@
       <option name="disconnectOption" value="ASK" />
       <method v="2" />
     </configuration>
-    <configuration name="TestSnapshotAllCrash2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotAllCrash2D in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -136,7 +137,7 @@
     <list>
       <item itemvalue="Go Build.go build 6.824" />
       <item itemvalue="Go Remote.Unnamed" />
-      <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft (1)" />
       <item itemvalue="Go Test.TestSnapshotInstallCrash2D in 6.824/raft" />
       <item itemvalue="Go Test.TestSnapshotInstallUnCrash2D in 6.824/raft" />
       <item itemvalue="Go Test.TestSnapshotInstallUnreliable2D in 6.824/raft" />
@@ -144,11 +145,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft (1)" />
         <item itemvalue="Go Test.TestSnapshotInstall2D in 6.824/raft" />
         <item itemvalue="Go Test.TestSnapshotInstallUnreliable2D in 6.824/raft" />
         <item itemvalue="Go Test.TestSnapshotInstallUnCrash2D in 6.824/raft" />
         <item itemvalue="Go Test.TestSnapshotInstallCrash2D in 6.824/raft" />
-        <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft" />
       </list>
     </recent_temporary>
   </component>
@@ -175,7 +176,8 @@
     <MESSAGE value="finnish raft 2B" />
     <MESSAGE value="setup a separate goroutine to apply logs, successfully passed TestSnapshotBasic2D" />
     <MESSAGE value="pass 2D tests" />
-    <option name="LAST_COMMIT_MESSAGE" value="pass 2D tests" />
+    <MESSAGE value="timeout problem happens every 20 tests, to be solved" />
+    <option name="LAST_COMMIT_MESSAGE" value="timeout problem happens every 20 tests, to be solved" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>
@@ -222,11 +224,6 @@
           <url>file://$PROJECT_DIR$/src/raft/config.go</url>
           <line>261</line>
           <option name="timeStamp" value="47" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/src/raft/raft.go</url>
-          <line>420</line>
-          <option name="timeStamp" value="49" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

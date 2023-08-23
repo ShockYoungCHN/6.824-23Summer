@@ -300,7 +300,6 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.log = make([]LogEntry, 1)
 	} else {
 		rf.log = log
-		fmt.Printf("%d readPersist %v", rf.me, rf.log)
 	}
 
 	if err := d.Decode(&lastIncludedIndex); err != nil {
@@ -382,7 +381,7 @@ func (rf *Raft) SendInstallSnapshot(server int, args *InstallSnapshotArgs, reply
 	DPrintf("%d send snapshot to %d", rf.me, server)
 	rpcTicker := time.NewTicker(time.Millisecond * 100) // it is just a temporary solution, I will try to find a better way
 	defer rpcTicker.Stop()
-	ch := make(chan bool, 100)
+	ch := make(chan bool, 10)
 	go func() {
 		ch <- rf.peers[server].Call("Raft.RecvInstallSnapshot", args, reply)
 	}()
@@ -418,7 +417,6 @@ func (rf *Raft) RecvInstallSnapshot(args *InstallSnapshotArgs, reply *InstallSna
 		rf.persist()
 	}
 	atomic.StoreInt32(&rf.recvHeartbeat, 1)
-	println("mark1")
 	// todo: is it possible that lastIncludedIndex >= args.LastIncludedIndex is true, and do we need to handle this case?
 	if rf.lastIncludedIndex >= args.LastIncludedIndex {
 		DPrintf("%d snapshot at %d, leader %d snapshot at %d",
@@ -436,7 +434,6 @@ func (rf *Raft) RecvInstallSnapshot(args *InstallSnapshotArgs, reply *InstallSna
 	//5. Save snapshot file, discard any existing or partial snapshot with a smaller index
 	rf.persister.SaveStateAndSnapshot(rf.getPersistentStateBytes(), args.Data)
 
-	println("mark2") // wrongly trimmed
 	//6. If existing log entry has same index and term as snapshot’s last included entry, retain log entries following it and reply
 	for i := 0; i < len(rf.log); i++ {
 		if rf.getOriginalIndex(i) == args.LastIncludedIndex && rf.log[i].Term == args.LastIncludedTerm {
@@ -444,12 +441,10 @@ func (rf *Raft) RecvInstallSnapshot(args *InstallSnapshotArgs, reply *InstallSna
 			rf.lastIncludedIndex = args.LastIncludedIndex
 			rf.lastIncludedTerm = args.LastIncludedTerm
 			rf.applySig <- true
-			println("ret")
 			return
 		}
 	}
 
-	println("mark3")
 	//7. Discard the entire log
 	rf.log = make([]LogEntry, 1)
 	rf.lastIncludedIndex = args.LastIncludedIndex
@@ -648,7 +643,7 @@ func (rf *Raft) broadcastAppendEntries() bool {
 			for isLeader && !rf.killed() {
 				ok := rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply)
 
-				// reconstruct args, see if get into next round
+				// reconstruct args
 				rf.raftLock.Lock("raft.broadcastAppendEntries.updateState")
 				if ok {
 					// update nextIndex and matchIndex for follower
@@ -858,9 +853,17 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 				//rf.raftLock.Unlock()
 				return
 			}
+
 			for i := 0; i < len(args.Entries); i++ {
-				// If an existing entry conflicts with a new one (same index but different terms),
+				// From paper: If an existing entry conflicts with a new one (same index but different terms),
 				// delete the existing entry and all that follow it
+
+				// this situation happens because of snapshot,
+				// when a follower takes snapshot at a recent index and leader send logs before that index(this is possible due to our log conflict policy)
+				if realPrevLogIndex+1+i < 0 {
+					continue
+				}
+
 				if len(rf.log)-1 >= realPrevLogIndex+1+i && // args.PrevLogIndex+1+i is the index of the new entry
 					rf.log[realPrevLogIndex+1+i].Term != args.Entries[i].Term {
 					rf.log = rf.log[:realPrevLogIndex+i+1] // args.PrevLogIndex+i+1 is not included! todo: if prevLogIndex is not in the log, call snapshot
@@ -932,28 +935,6 @@ func (rf *Raft) applyLogAsync() {
 					rf.raftLock.Unlock()
 				}
 			}
-			/*			// todo: although it's unlikely, but it's possible snapshot could happen between these two line
-						rf.raftLock.Lock("raft.applyLogAsync")
-						start = rf.lastApplied + 1
-						end = rf.commitIndex
-						logCopy := rf.log[rf.getRealIndex(start) : rf.getRealIndex(end)+1]
-						DPrintf("%d apply log from %d to %d, real index from %d to %d\n",
-							rf.me, start, end, rf.getRealIndex(start), rf.getRealIndex(end))
-						rf.raftLock.Unlock()
-						for i := 0; i < len(logCopy); i++ {
-							rf.raftLock.Lock("raft.applyLogAsync")
-							msg := ApplyMsg{
-								CommandValid: true,
-								Command:      logCopy[i].Command,
-								CommandIndex: start + i,
-							}
-							rf.raftLock.Unlock()
-							rf.applyCh <- msg
-
-							rf.raftLock.Lock("raft.applyLogAsync")
-							rf.lastApplied++
-							rf.raftLock.Unlock()
-						}*/
 		}
 	}
 }
@@ -971,36 +952,6 @@ func (rf *Raft) applySnapshot() {
 	rf.raftLock.Unlock()
 	rf.applyCh <- msg
 }
-
-/* rf.applyCh <- msg cannot be locked, thus during for-loop, rf.log could also be trimmed,
-	then we may send false entries to applyCh or rf.log index out-of-range.
-func (rf *Raft) applyLogAsync() {
-	for !rf.killed() {
-		select {
-		case <-rf.applySig:
-			rf.raftLock.Lock("raft.applyLogAsync")
-			start := rf.lastApplied + 1
-			end := rf.commitIndex
-			DPrintf("apply log from %d to %d \n", start, end)
-			rf.raftLock.Unlock()
-			for i := start; i <= end; i++ {
-				rf.raftLock.Lock("raft.applyLogAsync")
-				msg := ApplyMsg{
-					CommandValid: true,
-					Command:      rf.log[rf.getRealIndex(i)].Command,
-					CommandIndex: i,
-				}
-				DPrintf("%d apply log on index %d", rf.me, i)
-				rf.raftLock.Unlock()
-				rf.applyCh <- msg
-
-				rf.raftLock.Lock("raft.applyLogAsync")
-				rf.lastApplied++
-				rf.raftLock.Unlock()
-			}
-		}
-	}
-}*/
 
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
@@ -1184,7 +1135,7 @@ func (rf *Raft) election() {
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	num := runtime.NumGoroutine()
-	fmt.Printf("当前活动的goroutine数量：%d\n", num)
+	fmt.Printf("current active goroutine: %d\n", num)
 
 	rf := &Raft{}
 	rf.peers = peers
@@ -1227,6 +1178,13 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 func min(a int, b int) int {
 	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
 		return a
 	}
 	return b
