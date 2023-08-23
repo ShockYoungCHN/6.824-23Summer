@@ -21,10 +21,10 @@ the leader will be elected very slowly (you have to wait for RPC timeout to dete
 
 Of course, setting a proper timeout can also solve this problem, 
 but it seems guider doesn't want us to do this according to the comment in `raft.go`:
-```go
-// Call() is guaranteed to return (perhaps after a delay) *except* if the
-// handler function on the server side does not return.  Thus there
-// is no need to implement your own timeouts around Call().
+```
+Call() is guaranteed to return (perhaps after a delay) *except* if the
+handler function on the server side does not return.  Thus there
+is no need to implement your own timeouts around Call().
 ```
 
 ## Log replication
@@ -134,13 +134,16 @@ Let's consider it line by line.
 3. Heartbeat: care about commitIndex, it is the index on the original log, and should be changed.
 
 Potential deadlock:
-in commit `5617c70`, snapshot will be taken when there are too many logs committed instinctively. 
+in commit `5617c70`, snapshot will be taken when there are too many logs committed. 
 This happens after you send a applyMsg to the state machine. Then test code will call snapshot(), which also requires lock.
-However, while sending applyMsg, the raft is already locked. Thus deadlock happens.
+However, while calling snapshot(), the raft is already locked around `rf.applyCh <- msg`. Thus deadlock happens.
+Therefore, when you put a applyMsg to the applyCh, you should release the lock first.
 
 I need to make a few changes, but due to the reason that my applyLog function is not well-designed (it will only be called 
 after leader or follower update commitIndex) and releasing lock makes my code look ugly. 
 I finally decide to set another goroutine to run applyLog.
+
+
 
 At very beginning, I have some misunderstanding about snapshot. I thought I have to store the snapshot inside raft leader.
 Well actually, the snapshot is stored in state machine.

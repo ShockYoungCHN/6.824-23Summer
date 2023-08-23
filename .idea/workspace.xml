@@ -4,11 +4,12 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="finnish raft 2B">
+    <list default="true" id="df954b6f-1bc5-426f-9a3b-b7d11ae5e7e9" name="Changes" comment="setup a separate goroutine to apply logs, successfully passed TestSnapshotBasic2D">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/problems.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/problems.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/util.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/util.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,6 +19,7 @@
   <component name="GOROOT" url="file://$PROJECT_DIR$/../../go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -42,7 +44,7 @@
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;Errors&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;two.files.diff.last.used.file&quot;: &quot;T:/project/6.824/src/main/mr-tmp/mr-correct-indexer.txt&quot;
   }
 }</component>
@@ -55,7 +57,7 @@
       <recent name="T:\project\6.824\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.TestReliableChurn2C in 6.824/raft (1)">
+  <component name="RunManager" selected="Go Test.TestSnapshotAllCrash2D in 6.824/raft">
     <configuration name="go build 6.824" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
       <module name="6.824" />
       <target name="WSL - Ubuntu" />
@@ -70,7 +72,7 @@
       <option name="disconnectOption" value="ASK" />
       <method v="2" />
     </configuration>
-    <configuration name="TestFigure8Unreliable2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotAllCrash2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -79,10 +81,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestFigure8Unreliable2C\E$" />
+      <pattern value="^\QTestSnapshotAllCrash2D\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReliableChurn2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotInstall2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -91,10 +93,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestReliableChurn2C\E$" />
+      <pattern value="^\QTestSnapshotInstall2D\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReliableChurn2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotInstallCrash2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -103,10 +105,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestReliableChurn2C\E$" />
+      <pattern value="^\QTestSnapshotInstallCrash2D\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestUnreliableChurn2C in 6.824/raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotInstallUnCrash2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -115,10 +117,10 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestUnreliableChurn2C\E$" />
+      <pattern value="^\QTestSnapshotInstallUnCrash2D\E$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestUnreliableChurn2C in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestSnapshotInstallUnreliable2D in 6.824/raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="6.824" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <root_directory value="$PROJECT_DIR$/src" />
@@ -127,25 +129,25 @@
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
-      <pattern value="^\QTestUnreliableChurn2C\E$" />
+      <pattern value="^\QTestSnapshotInstallUnreliable2D\E$" />
       <method v="2" />
     </configuration>
     <list>
       <item itemvalue="Go Build.go build 6.824" />
       <item itemvalue="Go Remote.Unnamed" />
-      <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft (1)" />
-      <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft (1)" />
-      <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
-      <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft" />
-      <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotInstallCrash2D in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotInstallUnCrash2D in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotInstallUnreliable2D in 6.824/raft" />
+      <item itemvalue="Go Test.TestSnapshotInstall2D in 6.824/raft" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft (1)" />
-        <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft (1)" />
-        <item itemvalue="Go Test.TestReliableChurn2C in 6.824/raft" />
-        <item itemvalue="Go Test.TestUnreliableChurn2C in 6.824/raft" />
-        <item itemvalue="Go Test.TestFigure8Unreliable2C in 6.824/raft" />
+        <item itemvalue="Go Test.TestSnapshotAllCrash2D in 6.824/raft" />
+        <item itemvalue="Go Test.TestSnapshotInstallCrash2D in 6.824/raft" />
+        <item itemvalue="Go Test.TestSnapshotInstallUnCrash2D in 6.824/raft" />
+        <item itemvalue="Go Test.TestSnapshotInstallUnreliable2D in 6.824/raft" />
+        <item itemvalue="Go Test.TestSnapshotInstall2D in 6.824/raft" />
       </list>
     </recent_temporary>
   </component>
@@ -170,7 +172,8 @@
     <MESSAGE value="add problems.md&#10;for raft" />
     <MESSAGE value="finnish raft 2C" />
     <MESSAGE value="finnish raft 2B" />
-    <option name="LAST_COMMIT_MESSAGE" value="finnish raft 2B" />
+    <MESSAGE value="setup a separate goroutine to apply logs, successfully passed TestSnapshotBasic2D" />
+    <option name="LAST_COMMIT_MESSAGE" value="setup a separate goroutine to apply logs, successfully passed TestSnapshotBasic2D" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>
@@ -185,43 +188,43 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
-          <line>795</line>
+          <line>796</line>
           <option name="timeStamp" value="10" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/src/raft/config.go</url>
-          <line>620</line>
-          <option name="timeStamp" value="14" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
-          <line>1172</line>
-          <option name="timeStamp" value="15" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/src/raft/raft.go</url>
-          <line>345</line>
-          <option name="timeStamp" value="18" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
-          <line>976</line>
+          <line>977</line>
           <option name="timeStamp" value="19" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
-          <line>1024</line>
+          <line>1025</line>
           <option name="timeStamp" value="20" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/src/raft/test_test.go</url>
-          <line>1029</line>
+          <line>1030</line>
           <option name="timeStamp" value="21" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/src/raft/config.go</url>
-          <line>589</line>
-          <option name="timeStamp" value="22" />
+          <line>619</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/config.go</url>
+          <line>612</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/config.go</url>
+          <line>261</line>
+          <option name="timeStamp" value="47" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/raft/raft.go</url>
+          <line>420</line>
+          <option name="timeStamp" value="49" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
