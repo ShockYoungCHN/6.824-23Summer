@@ -554,6 +554,13 @@ func (rf *Raft) sendHeartbeat() {
 		// it seems after being elected, the leader's term won't be changed
 		// maybe I should construct args out of the loop
 		rf.raftLock.Lock("raft.sendHeartbeat.constructArgs")
+		// if we hear from last heartbeat:
+		// reply.success is true, then we send heartbeat with no entries
+		// reply.success is false, then we send heartbeat with entries
+
+		// if we didn't hear from last heartbeat, that means network problem/append log or snapshot took too long
+		// in this case, we should send AppendEntries with entries again
+
 		args := &AppendEntries{LeaderId: rf.me, Term: rf.currentTerm, LeaderCommit: rf.commitIndex}
 		isLeader = rf.isLeader()
 		rf.raftLock.Unlock()

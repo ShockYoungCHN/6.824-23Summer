@@ -1,6 +1,6 @@
 
 ## Leader election
-Watch this video: https://www.youtube.com/watch?v=9sT03jEwcaw to have a general idea of raft.
+Play this https://thesecretlivesofdata.com/raft/ to have a general idea of raft.
 Then read RAFT 5.1, 5.2 and page 3.
 This should be the easiest part of raft.
 And remember a few details:
