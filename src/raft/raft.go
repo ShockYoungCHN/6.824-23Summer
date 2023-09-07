@@ -21,6 +21,7 @@ import (
 	"6.824/labgob"
 	"bytes"
 	"fmt"
+	"log"
 	"math/rand"
 	"runtime"
 
@@ -80,7 +81,7 @@ type AppendEntries struct {
 }
 
 type AppendEntriesReply struct {
-	Term int32
+	Term int
 	// Success is true if follower contained entry matching AppendEntries.PrevLogIndex and AppendEntries.PrevLogTerm
 	Success bool
 
@@ -255,7 +256,6 @@ func (rf *Raft) GetState() (int, bool) {
 // currentTerm, votedFor, log[] should be persistent
 // persist should be called each time the state changes
 func (rf *Raft) persist() {
-	// fmt.Printf("%d persist %s \n", rf.me, rf.log)
 	rf.persister.SaveRaftState(rf.getPersistentStateBytes())
 }
 
@@ -300,6 +300,7 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.log = make([]LogEntry, 1)
 	} else {
 		rf.log = log
+		DPrintf("readPersist: %d isleader %v read log len %d", rf.me, rf.isLeader(), len(rf.log))
 	}
 
 	if err := d.Decode(&lastIncludedIndex); err != nil {
@@ -340,13 +341,23 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 // all info up to and including index. this means the
 // service no longer needs the log through (and including)
 // that index. Raft should now trim its log as much as possible.
+//
+// one possibility is: between tester called Snapshot() and Snapshot() acquired lock, log is trimmed by RecvInstallSnapshot()
+// and it does happen in TestSnapshotInstallUnCrash2D, therefore before trimming, we should check whether the snapshot is already included
+//
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
-	// Your code here (2D).
 	// printStack()
-	println(rf.me, "trim")
 	rf.raftLock.Lock("raft.Snapshot")
 	defer rf.raftLock.Unlock()
 
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("%d panic in Snapshot index %d, current lastIncludedIndex %d, log len %d", rf.me, index, rf.lastIncludedIndex, len(rf.log))
+		}
+	}()
+	if index <= rf.lastIncludedIndex {
+		return
+	}
 	// trim the log
 	// even log[index] is included in the snapshot,
 	// I still decide keep it in log, and set it as the first log entry just as how we initialize log[] in make()
@@ -451,15 +462,8 @@ func (rf *Raft) RecvInstallSnapshot(args *InstallSnapshotArgs, reply *InstallSna
 	rf.lastIncludedTerm = args.LastIncludedTerm
 
 	//8. Reset state machine using snapshot contents (and load snapshot’s cluster configuration)
-	DPrintf("%d apply snapshot %d", rf.me, args.LastIncludedIndex)
-	rf.applyCh <- ApplyMsg{
-		SnapshotValid: true,
-		Snapshot:      args.Data,
-		SnapshotTerm:  args.LastIncludedTerm,
-		SnapshotIndex: args.LastIncludedIndex,
-	}
-	rf.commitIndex = args.LastIncludedIndex
-	rf.lastApplied = args.LastIncludedIndex
+
+	rf.applySig <- true
 }
 
 //
@@ -511,7 +515,6 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if args.CandidateTerm < rf.currentTerm ||
 		rf.log[len(rf.log)-1].Term > args.PrevLogEntryTerm ||
 		(rf.log[len(rf.log)-1].Term == args.PrevLogEntryTerm && rf.getOriginalIndex(len(rf.log)-1) > args.LastLogEntryIndex) {
-		// DPrintf("%d recv vote req %v \n", rf.me, args)
 		if args.CandidateTerm > rf.currentTerm {
 			rf.beFollower(args.CandidateTerm, args.CandidateId)
 		}
@@ -572,7 +575,7 @@ func (rf *Raft) broadcastAppendEntries() bool {
 	// appendEntries have been sent to itself already, so start from 1
 	numCallback := 1
 	rf.raftLock.Lock("raft.broadcastAppendEntries.getMaxLogIndex")
-	DPrintf("currentLogIndex %d, with entry %v\n", len(rf.log)-1, rf.log[len(rf.log)-1])
+	DPrintf("log rep: leader %d term %d latestLogIndex %d, with entry {%v}\n", rf.me, rf.currentTerm, len(rf.log)-1, rf.log[len(rf.log)-1])
 	rf.raftLock.Unlock()
 
 	for i := 0; i < len(rf.peers); i++ {
@@ -590,7 +593,6 @@ func (rf *Raft) broadcastAppendEntries() bool {
 			realPrevLogIndex := rf.getRealIndex(prevLogIndex)
 			rf.raftLock.Unlock()
 
-			DPrintf("%d broadcast entries or snapshot to %d: mark1", rf.me, peer)
 			if realPrevLogIndex < 0 {
 				rf.raftLock.Lock("raft.broadcastAppendEntries.constructSnapshotArgs")
 				DPrintf("%d send snapshot to %d, Prevlog %d, lastSnapshot %d",
@@ -619,69 +621,117 @@ func (rf *Raft) broadcastAppendEntries() bool {
 			}
 
 			rf.raftLock.Lock("raft.broadcastAppendEntries.constructArgs")
+			isLeader := rf.isLeader()
+			if !isLeader {
+				rf.raftLock.Unlock()
+				return
+			}
 			prevLogIndex = rf.nextIndex[peer] - 1
 			realPrevLogIndex = rf.getRealIndex(prevLogIndex) // reassign values, since they might be changed
-			entriesLen := len(rf.log) - 1 - realPrevLogIndex
-			isLeader := rf.isLeader()
-			DPrintf("log rep: %d broadcast to %d,log range from %d to %d, %v\n",
-				rf.me, peer, prevLogIndex+1, prevLogIndex+entriesLen,
-				rf.log[realPrevLogIndex+1:realPrevLogIndex+entriesLen+1])
+			entriesLen := len(rf.log) - 1 - realPrevLogIndex // todo: entriesLen could be negative in TestFigure8Unreliable2C
+			// todo: it's so bad: realPrevLogIndex+entriesLen+1 can be larger than len(rf.log).
+			// Because log can be trimmed in recv append entries and become follower. but we didn't check isLeader util the loop.
+			// Thus I have to use a min func to restrict.
+			// and one more fucking reason, its all because go don't have do while loop.
+			//// todo: figure why prevLogIndex is larger eq than len(log)
+			//if rf.nextIndex[peer] > len(rf.log) {
+			//	log.Fatalf("%d prevLogIndex %d, log len %d", rf.me, rf.nextIndex[peer], len(rf.log))
+			//}
+
+			end := min(realPrevLogIndex+entriesLen+1, len(rf.log))
+			if end > len(rf.log) {
+				log.Fatalf("end %d, realPrevLogIndex+entriesLen+1 %d, log len %d", end, realPrevLogIndex+entriesLen+1, len(rf.log))
+			}
 			args := &AppendEntries{
 				LeaderId:     rf.me,
 				PrevLogIndex: prevLogIndex,
 				PrevLogTerm:  rf.log[realPrevLogIndex].Term,
 				Term:         rf.currentTerm,
-				Entries:      rf.log[realPrevLogIndex+1 : realPrevLogIndex+entriesLen+1],
+				Entries:      rf.log[realPrevLogIndex+1 : end],
 				LeaderCommit: rf.commitIndex,
 			}
 			reply := &AppendEntriesReply{}
 			rf.raftLock.Unlock()
+
 			if len(args.Entries) == 0 {
 				return
 			}
-
 			for isLeader && !rf.killed() {
-				ok := rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply)
+				// todo: keep sending AppendEntries until success, but it's ugly code, I will try to get rid of this
+				rpcTicker := time.NewTicker(time.Millisecond * 100)
+				done := make(chan bool, 1)
+				ok := false
+				replyCh := make(chan *AppendEntriesReply, 1)
+				for !ok {
+					select {
+					case <-rpcTicker.C:
+						if _, isLeader := rf.GetState(); !isLeader {
+							return
+						}
+						// launch a goroutine to send AppendEntries --> want to add timeout
+						// --> have to use select case to do so.
+						go func() {
+							reply := &AppendEntriesReply{}
+							success := rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply)
+							if success {
+								select {
+								case replyCh <- reply:
+								default: // this make sure the goroutines won't block in the bg and able to exit
+									DPrintf("replyCh is full, means RecvAppendEntries success")
+								}
+								done <- true
+							}
+						}()
+					case ok = <-done:
+					}
+				}
+				reply = <-replyCh
+				rpcTicker.Stop()
+
+				// should check reply's term first CRITICAL!!!
+				rf.raftLock.Lock("raft.broadcastAppendEntries.checkTerm")
+				if reply.Term > rf.currentTerm {
+					rf.beFollower(reply.Term, -1)
+				}
+				rf.raftLock.Unlock()
+				if _, isLeader := rf.GetState(); !isLeader {
+					return
+				}
 
 				// reconstruct args
 				rf.raftLock.Lock("raft.broadcastAppendEntries.updateState")
-				if ok {
-					// update nextIndex and matchIndex for follower
-					if reply.Success {
-						DPrintf("log rep: leader %d, peer %d successfully update from %d to %d\n",
-							rf.me, peer, prevLogIndex+1, prevLogIndex+entriesLen)
-						callback <- true
-						rf.nextIndex[peer] = prevLogIndex + entriesLen + 1
-						rf.matchIndex[peer] = prevLogIndex + entriesLen
-						rf.raftLock.Unlock()
-						break
-					} else {
-						DPrintf("%d leader send to %d, but conflictIndex %d, term %d",
-							rf.me, peer, reply.ConflictIndex, reply.ConflictTerm)
-						// the leader should first search its log for conflictTerm.
-						// If it finds an entry in its log with that term,
-						// it should set nextIndex to be the one beyond the index of the last entry in that term in its log.
-						rf.nextIndex[peer] = reply.ConflictIndex
-						for i := prevLogIndex; i >= 0; i-- {
-							if rf.getRealIndex(i) < 0 {
-								// todo: need to send snapshot
-								rf.nextIndex[peer] = rf.lastIncludedIndex
-								break
-							}
-							if rf.log[rf.getRealIndex(i)].Term == reply.ConflictTerm {
-								rf.nextIndex[peer] = i + 1
-								break
-							}
+				// update nextIndex and matchIndex for follower
+				if reply.Success {
+					DPrintf("log rep: leader %d, peer %d successfully update from %d to %d\n",
+						rf.me, peer, prevLogIndex+1, prevLogIndex+entriesLen)
+					callback <- true
+					rf.nextIndex[peer] = prevLogIndex + entriesLen + 1
+					rf.matchIndex[peer] = prevLogIndex + entriesLen
+					//// todo:delete
+					//DPrintf("log rep: leader %d update peer %d nextIndex %d, matchIndex %d\n", rf.me, peer, rf.nextIndex[peer], rf.matchIndex[peer])
+					rf.raftLock.Unlock()
+					break
+				} else {
+					DPrintf("leader %d send to %d, but conflictIndex %d, conflictTerm %d",
+						rf.me, peer, reply.ConflictIndex, reply.ConflictTerm)
+					// the leader should first search its log for conflictTerm.
+					// If it finds an entry in its log with that term,
+					// it should set nextIndex to be the one beyond the index of the last entry in that term in its log.
+					rf.nextIndex[peer] = reply.ConflictIndex
+					for i := prevLogIndex; i >= 0; i-- {
+						if rf.getRealIndex(i) < 0 {
+							// todo: need to send snapshot?
+							rf.nextIndex[peer] = rf.lastIncludedIndex
+							break
 						}
-						if rf.nextIndex[peer] <= 0 { // smallest nextIndex value is 1
-							rf.nextIndex[peer] = 1
+						if rf.log[rf.getRealIndex(i)].Term == reply.ConflictTerm {
+							rf.nextIndex[peer] = i + 1
+							break
 						}
 					}
-				} else {
-					// If followers crash or run slowly, or if network packets are lost,
-					// the leader retries Append Entries RPCs indefinitely (even after it has responded to the client)
-					// until all followers eventually store all log entries
-					DPrintf("%d send append entries to %d failed %v\n", rf.me, peer, args.Entries)
+					if rf.nextIndex[peer] <= 0 { // smallest nextIndex value is 1
+						rf.nextIndex[peer] = 1
+					}
 				}
 
 				prevLogIndex = rf.nextIndex[peer] - 1
@@ -704,13 +754,13 @@ func (rf *Raft) broadcastAppendEntries() bool {
 					rf.SendInstallSnapshot(peer, snapshotArgs, snapshotReply)
 
 					rf.raftLock.Lock("raft.broadcastAppendEntries.updateNextIndex")
-					rf.nextIndex[peer] = rf.lastIncludedIndex + 1
-					rf.matchIndex[peer] = rf.lastIncludedIndex
 					if snapshotReply.Term > rf.currentTerm {
-						rf.beFollower(snapshotReply.Term, -1) // should I set votedFor to -1?
+						rf.beFollower(snapshotReply.Term, -1) // todo: should I set votedFor to -1?
 						rf.raftLock.Unlock()
 						return
 					}
+					rf.nextIndex[peer] = rf.lastIncludedIndex + 1
+					rf.matchIndex[peer] = rf.lastIncludedIndex
 					rf.raftLock.Unlock()
 				}
 
@@ -742,7 +792,6 @@ func (rf *Raft) broadcastAppendEntries() bool {
 			// and log[N].term == currentTerm:
 			// set commitIndex = N (also apply the log to state machine)
 			rf.updateCommitIndex(rf.currentTerm)
-
 			numCallback++
 			if numCallback == len(rf.peers) {
 				return true
@@ -800,6 +849,7 @@ func (rf *Raft) broadcastHeartBeat(args *AppendEntries) {
 func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply) {
 	rf.raftLock.Lock("raft.RecvAppendEntries")
 	defer rf.raftLock.Unlock()
+	reply.Term = rf.currentTerm
 	reply.Success = true // heartbeat doesn't care about success
 	if args.Term < rf.currentTerm {
 		reply.Success = false
@@ -1105,7 +1155,7 @@ func (rf *Raft) election() {
 					rf.raftLock.Unlock()
 					return
 				}
-				DPrintf("raft: id %d in %d: terms %d votes %d", rf.me, rf.currentTerm, electionTerm, votes)
+				DPrintf("raft: id %d in %d: terms %d recv votes %d", rf.me, rf.currentTerm, electionTerm, votes)
 				rf.raftLock.Unlock()
 
 				// If votes received from the majority of servers: become leader
@@ -1134,8 +1184,8 @@ func (rf *Raft) election() {
 //
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
-	num := runtime.NumGoroutine()
-	fmt.Printf("current active goroutine: %d\n", num)
+	//num := runtime.NumGoroutine()
+	//fmt.Printf("current active goroutine: %d\n", num)
 
 	rf := &Raft{}
 	rf.peers = peers
