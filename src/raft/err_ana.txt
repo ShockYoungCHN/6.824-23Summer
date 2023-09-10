@@ -21,6 +21,11 @@ peer1拿到99(实际最新的commitIndex是100)，他就准备apply log了，app
 
 问题解决也很简单：
 1. follower apply snapshot后更新commitIndex：这是必须的，不然即使越界不发生，也会导致log被重复apply。
+2. 即使第一个问题被解决，还是可能会出现leaderCommit小于当前peer commitIndex的情况。因为我们并不阻止拥有较小commitIndex的peer成为leader。
+leaderCommit<commitIndex在没有snapshot时并不是一个很大的问题，因为log没有被截断。
+但是在snapshot中，peer想要提交某个entry必须检查该entry的Term是否与自己的一致，倘若曾经的log被截断，那么就无从检查了。
+
+
 2. 改进现有的commitIndex更新逻辑。
 
 另一个问题：TestSnapshotInstallUnCrash2D() 失败？

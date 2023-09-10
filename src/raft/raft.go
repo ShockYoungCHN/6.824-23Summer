@@ -316,156 +316,6 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 }
 
-// the passed-in index is the index on the non-trimmed log
-// return the index on the trimmed log
-func (rf *Raft) getRealIndex(index int) int {
-	return index - rf.lastIncludedIndex
-}
-
-// the passed-in index is the index on the trimmed log
-// return the index on the non-trimmed log
-func (rf *Raft) getOriginalIndex(index int) int {
-	return index + rf.lastIncludedIndex
-}
-
-//
-// A service wants to switch to snapshot. Only do so if Raft hasn't
-// have more recent info since it communicate the snapshot on applyCh.
-//
-// "we suggest that you simply have it return true"
-func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
-	return true
-}
-
-// the service says it has created a snapshot that has
-// all info up to and including index. this means the
-// service no longer needs the log through (and including)
-// that index. Raft should now trim its log as much as possible.
-//
-// one possibility is: between tester called Snapshot() and Snapshot() acquired lock, log is trimmed by RecvInstallSnapshot()
-// and it does happen in TestSnapshotInstallUnCrash2D, therefore before trimming, we should check whether the snapshot is already included
-//
-func (rf *Raft) Snapshot(index int, snapshot []byte) {
-	// printStack()
-	rf.raftLock.Lock("raft.Snapshot")
-	defer rf.raftLock.Unlock()
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Fatalf("%d panic in Snapshot index %d, current lastIncludedIndex %d, log len %d", rf.me, index, rf.lastIncludedIndex, len(rf.log))
-		}
-	}()
-	if index <= rf.lastIncludedIndex {
-		return
-	}
-	// trim the log
-	// even log[index] is included in the snapshot,
-	// I still decide keep it in log, and set it as the first log entry just as how we initialize log[] in make()
-	rf.log = rf.log[rf.getRealIndex(index):]
-	rf.lastIncludedIndex = index
-	DPrintf("%d trimmed from %d", rf.me, rf.lastIncludedIndex)
-	rf.lastIncludedTerm = rf.log[0].Term
-	persistentBytes := rf.getPersistentStateBytes()
-	rf.persister.SaveStateAndSnapshot(persistentBytes, snapshot)
-}
-
-func (rf *Raft) compressLog(end int) {
-	if end <= rf.lastIncludedIndex {
-		return
-	}
-
-	for i := 1; i <= end; i++ {
-
-	}
-}
-
-// SendInstallSnapshot should be called when:
-// the leader has already discarded the next log entry that it needs to send to a follower.
-// 1. a follower is too slow to keep up with the leader
-// 2. an exceptionally slow follower or a new server joins the cluster
-//
-// Although I am very reluctant to use timeout in rpc, it seems I have to do so.
-// If some node is disconnected, from sender call rpc, it will take about 4 sec for Call func return false.
-// This will lead `TestSnapshotInstall2D` to take more than 120s.
-//
-func (rf *Raft) SendInstallSnapshot(server int, args *InstallSnapshotArgs, reply *InstallSnapshotReply) {
-	DPrintf("%d send snapshot to %d", rf.me, server)
-	rpcTicker := time.NewTicker(time.Millisecond * 100) // it is just a temporary solution, I will try to find a better way
-	defer rpcTicker.Stop()
-	ch := make(chan bool, 10)
-	go func() {
-		ch <- rf.peers[server].Call("Raft.RecvInstallSnapshot", args, reply)
-	}()
-	for {
-		select {
-		case ok := <-ch:
-			if ok {
-				DPrintf("%d send snapshot to %d success", rf.me, server)
-				return
-			} else {
-				DPrintf("%d send snapshot to %d failed", rf.me, server)
-			}
-		case <-rpcTicker.C:
-			DPrintf("%d send snapshot to %d timeout", rf.me, server)
-			go func() {
-				ch <- rf.peers[server].Call("Raft.RecvInstallSnapshot", args, reply)
-			}()
-		}
-	}
-}
-
-func (rf *Raft) RecvInstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapshotReply) {
-	DPrintf("%d try apply snapshot %d", rf.me, args.LastIncludedIndex)
-	rf.raftLock.Lock("raft.RecvInstallSnapshot")
-	defer rf.raftLock.Unlock()
-	reply.Term = rf.currentTerm
-	if args.Term < rf.currentTerm {
-		reply.Term = rf.currentTerm
-		return
-	}
-	if args.Term > rf.currentTerm {
-		rf.beFollower(args.Term, args.LeaderId)
-		rf.persist()
-	}
-	atomic.StoreInt32(&rf.recvHeartbeat, 1)
-	// todo: is it possible that lastIncludedIndex >= args.LastIncludedIndex is true, and do we need to handle this case?
-	if rf.lastIncludedIndex >= args.LastIncludedIndex {
-		DPrintf("%d snapshot at %d, leader %d snapshot at %d",
-			rf.me, rf.lastIncludedIndex,
-			args.LeaderId, args.LastIncludedIndex)
-		return
-	}
-
-	/* Ignored following steps as instructed by raft guide
-	2. Create new snapshot file if first chunk (offset is 0)
-	3. Write data into snapshot file at given offset
-	4. Reply and wait for more data chunks if done is false
-	*/
-
-	//5. Save snapshot file, discard any existing or partial snapshot with a smaller index
-	rf.persister.SaveStateAndSnapshot(rf.getPersistentStateBytes(), args.Data)
-
-	//6. If existing log entry has same index and term as snapshot’s last included entry, retain log entries following it and reply
-	for i := 0; i < len(rf.log); i++ {
-		if rf.getOriginalIndex(i) == args.LastIncludedIndex && rf.log[i].Term == args.LastIncludedTerm {
-			rf.log = rf.log[i:]
-			rf.lastIncludedIndex = args.LastIncludedIndex
-			rf.lastIncludedTerm = args.LastIncludedTerm
-			rf.applySig <- true
-			return
-		}
-	}
-
-	//7. Discard the entire log
-	rf.log = make([]LogEntry, 1)
-	rf.lastIncludedIndex = args.LastIncludedIndex
-	rf.lastIncludedTerm = args.LastIncludedTerm
-
-	//8. Reset state machine using snapshot contents (and load snapshot’s cluster configuration)
-
-	rf.applySig <- true
-}
-
 //
 // example code to send a RequestVote RPC to a server.
 // server is the index of the target server in rf.peers[].
@@ -943,11 +793,12 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry) (WHY?)
 	// make sure the log is replicated before updating commitIndex, then you can apply the log
-	DPrintf("%d term %d, args.LeaderCommit %d, rf.commitIndex %d", rf.me, rf.currentTerm, args.LeaderCommit, rf.commitIndex)
+	DPrintf("%d term %d, args.LeaderCommit %d, rf.commitIndex %d, rf.lastIncludeIndex %d",
+		rf.me, rf.currentTerm, args.LeaderCommit, rf.commitIndex, rf.lastIncludedIndex)
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = min(args.LeaderCommit, rf.getOriginalIndex(len(rf.log)-1))
-		// todo: why rf.commitIndex - rf.lastInclude is negative
-		// seems impossible for args.LeaderCommit<lastInclude, cause if so then it means current peer snapshot of entries which not commit
+
+		// todo: why rf.commitIndex - rf.lastIncludedIndex could be negative?
 		if rf.getRealIndex(rf.commitIndex) < 0 {
 			log.Fatalf("rf.me %d, args.leaderCommit %d, rf.lastIncludeIndex %d, len(rf.log) %d",
 				rf.me, args.LeaderCommit, rf.lastIncludedIndex, len(rf.log))
