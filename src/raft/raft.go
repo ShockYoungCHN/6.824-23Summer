@@ -508,10 +508,13 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	//fmt.Printf("rf.me %d curr %d; id %d candidate %d\n", rf.me, rf.currentTerm, args.CandidateId, args.CandidateTerm)
 	// Reply false if term < currentTerm OR
 	// rf.log[len(rf.log)-1].Term<args.PrevLogEntryTerm  (see at 5.4.1) OR
-	// rf.log[len(rf.log)-1].Term == args.PrevLogEntryTerm && len(rf.log)-1 > args.LastLogEntryIndex
+	// rf.log[len(rf.log)-1 args.leaderCommit].Term == args.PrevLogEntryTerm && len(rf.log)-1 > args.LastLogEntryIndex
 	//(len(rf.log)-1>... means current peer has more log entries than the candidate)
 
-	DPrintf("votes: peer %d term %d, recv %v \n", rf.me, rf.currentTerm, args)
+	DPrintf("votes: peer %d term %d, recv votesReq "+
+		"candidateId %d, candidateTerm %d, prevLogEntryTerm %d, lastLogEntryIndex %d",
+		rf.me, rf.currentTerm,
+		args.CandidateId, args.CandidateTerm, args.PrevLogEntryTerm, args.LastLogEntryIndex)
 	if args.CandidateTerm < rf.currentTerm ||
 		rf.log[len(rf.log)-1].Term > args.PrevLogEntryTerm ||
 		(rf.log[len(rf.log)-1].Term == args.PrevLogEntryTerm && rf.getOriginalIndex(len(rf.log)-1) > args.LastLogEntryIndex) {
@@ -538,6 +541,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		// to prevent too much follower get into CANDIDATE state
 		atomic.StoreInt32(&rf.recvHeartbeat, 1)
 		reply.VoteGranted = true
+		DPrintf("votes: peer %d in term %d grant vote to candidate %d", rf.me, rf.currentTerm, args.CandidateId)
 	}
 }
 
@@ -668,8 +672,6 @@ func (rf *Raft) broadcastAppendEntries() bool {
 						if _, isLeader := rf.GetState(); !isLeader {
 							return
 						}
-						// launch a goroutine to send AppendEntries --> want to add timeout
-						// --> have to use select case to do so.
 						go func() {
 							reply := &AppendEntriesReply{}
 							success := rf.peers[peer].Call("Raft.RecvAppendEntries", args, reply)
@@ -786,7 +788,7 @@ func (rf *Raft) broadcastAppendEntries() bool {
 	for {
 		select {
 		case <-callback:
-			DPrintf("log rep: leader %d, ready to update commit index\n", rf.me)
+			DPrintf("log rep: leader %d ready to update commit index\n", rf.me)
 			// If there exists an N such that N > commitIndex,
 			// a majority of matchIndex[i] ≥ N,
 			// and log[N].term == currentTerm:
@@ -855,7 +857,12 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 		reply.Success = false
 		return
 	}
-
+	DPrintf(
+		"%d term %d, recv appendEntries fromleader %d"+
+			" args.LeaderCommit %d, rf.commitIndex %d, len(rf.log) %d",
+		rf.me, rf.currentTerm, args.LeaderId,
+		args.LeaderCommit, rf.commitIndex, len(rf.log),
+	)
 	atomic.StoreInt32(&rf.recvHeartbeat, 1)
 
 	switch rf.getState() {
@@ -930,16 +937,24 @@ func (rf *Raft) RecvAppendEntries(args *AppendEntries, reply *AppendEntriesReply
 			// I could probably call changeLog() each time in for-loop, but I think persisting once is better
 			rf.persist()
 		}
-		DPrintf("rf.me %d with term %d logindex %d log %v ",
-			rf.me, rf.currentTerm, rf.getOriginalIndex(len(rf.log)-1), rf.log)
+		DPrintf("rf.me %d term %d, current last log is at index %d log %v ",
+			rf.me, rf.currentTerm, rf.getOriginalIndex(len(rf.log)-1), rf.log[len(rf.log)-1])
 	}
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry) (WHY?)
 	// make sure the log is replicated before updating commitIndex, then you can apply the log
+	DPrintf("%d term %d, args.LeaderCommit %d, rf.commitIndex %d", rf.me, rf.currentTerm, args.LeaderCommit, rf.commitIndex)
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = min(args.LeaderCommit, rf.getOriginalIndex(len(rf.log)-1))
+		// todo: why rf.commitIndex - rf.lastInclude is negative
+		// seems impossible for args.LeaderCommit<lastInclude, cause if so then it means current peer snapshot of entries which not commit
+		if rf.getRealIndex(rf.commitIndex) < 0 {
+			log.Fatalf("rf.me %d, args.leaderCommit %d, rf.lastIncludeIndex %d, len(rf.log) %d",
+				rf.me, args.LeaderCommit, rf.lastIncludedIndex, len(rf.log))
+		}
+
 		if rf.log[rf.getRealIndex(rf.commitIndex)].Term == rf.currentTerm { //todo: think about why commitIndex can guarantee that the log is synced
-			DPrintf("%d ready apply log from %d to %d ", rf.me, rf.lastApplied+1, rf.commitIndex)
+			DPrintf("%d ready apply log from %d to %d", rf.me, rf.lastApplied+1, rf.commitIndex)
 			rf.applySig <- true
 			return
 		}
@@ -955,6 +970,8 @@ func (rf *Raft) applyLogAsync() {
 			for {
 				rf.raftLock.Lock("raft.applyLogAsync")
 				start := rf.lastApplied + 1
+				// while apply log, you can always make sure entries you commit is behind commitIndex
+				// but in snapshot, you don't know, the snapshot end might be somewhere after commitIndex
 				end := rf.commitIndex
 				if rf.getRealIndex(start) <= 0 {
 					rf.raftLock.Unlock()
@@ -999,6 +1016,7 @@ func (rf *Raft) applySnapshot() {
 		SnapshotIndex: rf.lastIncludedIndex,
 	}
 	rf.lastApplied = rf.lastIncludedIndex
+	rf.commitIndex = rf.lastIncludedIndex
 	rf.raftLock.Unlock()
 	rf.applyCh <- msg
 }
