@@ -1,0 +1,26 @@
+简单来说一个commitIndex不是最新的peer被选为了leader，然后在snapshot情况下无法同步commitIndex，最终越界。
+
+为何与snapshot相关：接收snapshot的时候，我只更新lastIncludeIndex，并没有更新commitIndex。
+
+假设此时有peer 0,1,2. 2是leader。2拿到一个实际index为100的entry。且1比较落后，0则跟2紧密同步
+此时leader 2开始广播entry 100。
+首先由于peer 1过于落后，不得不接收2的snapshot，但是没有更新commitIndex。
+接着因为网络问题，peer 0没有收到后续来自peer 2的heartbeat，也就没有更新commitIndex。
+这时的commitIndex大概是：
+1:90(1落后较多，接收snapshot后也没有更新commitIndex，设为90), 2:100, 0:99(因为0紧密跟随2，但没收到2后续的heartbeat所以不是100)
+
+之后经过一些选举peer 0成为了leader（可能0的网络恢复了）。
+
+那么当peer 1接到peer 0的args.LeaderCommit时，
+peer1的if args.LeaderCommit > rf.commitIndex 判断为true，然后rf.commitIndex = min(args.LeaderCommit, lastIncludeIndex)，
+peer1拿到99(实际最新的commitIndex是100)，他就准备apply log了，apply log之前当然要检查commitIndex位置的Term是否与自己的一致（论文规定的）
+但是99位置的entry实际已经snapshot了，在log上不存在，所以越界。
+
+注意这种情况必须凑齐两个极低概率的事件，一个是网络延迟导致peer 0没有收到后续来自peer 2的heartbeat，也就没有更新commitIndex，
+另一个是peer 0的网络恢复了，然后选举为leader。
+
+问题解决也很简单：
+1. follower apply snapshot后更新commitIndex：这是必须的，不然即使越界不发生，也会导致log被重复apply。
+2. 改进现有的commitIndex更新逻辑。
+
+另一个问题：TestSnapshotInstallUnCrash2D() 失败？
